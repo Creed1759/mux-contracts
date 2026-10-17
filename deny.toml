@@ -1,0 +1,37 @@
+[graph]
+targets = [
+    "wasm32-unknown-unknown",
+    "x86_64-unknown-linux-gnu",
+]
+
+# Advisories are gated in CI (`deny` job in .github/workflows/ci.yml, #778).
+# Schema v2: every RustSec vulnerability advisory is an error. Yanked crates
+# warn only: spin 0.9.8 is pulled in transitively by soroban-sdk (soroban-wasmi)
+# and is bumped with the SDK. Any `ignore` entry must name the advisory id and
+# a reason.
+[advisories]
+version = 2
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "warn"
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+]
+confidence-threshold = 0.8
+exceptions = []
+
+[bans]
+multiple-versions = "warn"
+highlight = "all"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -52,6 +52,24 @@ describe("Contract Address Configuration", () => {
 
       delete process.env.TESTNET_MUX_BATCHER_ID;
     });
+
+    it("overrides muxPolicy with environment variable", () => {
+      const testAddress = "CPOLICY_ENV";
+      process.env.LOCALNET_MUX_POLICY_ID = testAddress;
+
+      const addresses = loadContractAddresses("localnet", DEFAULT_ADDRESSES);
+      expect(addresses.muxPolicy).toBe(testAddress);
+
+      delete process.env.LOCALNET_MUX_POLICY_ID;
+    });
+
+    it("loads muxPolicy for each network", () => {
+      for (const network of ["localnet", "testnet", "mainnet"] as const) {
+        const addresses = loadContractAddresses(network, DEFAULT_ADDRESSES);
+        expect(addresses).toHaveProperty("muxPolicy");
+        expect(typeof addresses.muxPolicy).toBe("string");
+      }
+    });
   });
 
   describe("validateAddresses", () => {
@@ -59,7 +77,9 @@ describe("Contract Address Configuration", () => {
       const addresses = {
         muxAccount: "CAcc1",
         muxBatcher: "CBatch1",
+        muxDelegation: "CDel1",
         muxPermissions: "CPerms1",
+        muxWalletRegistry: "CWReg1",
       };
 
       expect(() => {
@@ -71,7 +91,9 @@ describe("Contract Address Configuration", () => {
       const addresses = {
         muxAccount: "",
         muxBatcher: "CBatch1",
+        muxDelegation: "CDel1",
         muxPermissions: "CPerms1",
+        muxWalletRegistry: "CWReg1",
       };
 
       expect(() => {
@@ -86,7 +108,9 @@ describe("Contract Address Configuration", () => {
       const addresses = {
         muxAccount: "",
         muxBatcher: "",
+        muxDelegation: "CDel1",
         muxPermissions: "CPerms1",
+        muxWalletRegistry: "CWReg1",
       };
 
       expect(() => {
@@ -101,7 +125,9 @@ describe("Contract Address Configuration", () => {
       const addresses = {
         muxAccount: "",
         muxBatcher: "",
+        muxDelegation: "",
         muxPermissions: "",
+        muxWalletRegistry: "",
       };
 
       expect(() => {
@@ -116,23 +142,32 @@ describe("Contract Address Configuration", () => {
         localnet: {
           muxAccount: "CLoc1",
           muxBatcher: "CLoc2",
-          muxPermissions: "CLoc3",
+          muxDelegation: "CLoc3",
+          muxPermissions: "CLoc4",
+          muxWalletRegistry: "CLoc5",
         },
         testnet: {
           muxAccount: "CTest1",
           muxBatcher: "CTest2",
-          muxPermissions: "CTest3",
+          muxDelegation: "CTest3",
+          muxPermissions: "CTest4",
+          muxWalletRegistry: "CTest5",
+          muxPolicy: "CTest5",
         },
         mainnet: {
           muxAccount: "",
           muxBatcher: "",
+          muxDelegation: "",
           muxPermissions: "",
+          muxWalletRegistry: "",
         },
       });
 
       expect(addresses.muxAccount).toBe("CTest1");
       expect(addresses.muxBatcher).toBe("CTest2");
-      expect(addresses.muxPermissions).toBe("CTest3");
+      expect(addresses.muxDelegation).toBe("CTest3");
+      expect(addresses.muxPermissions).toBe("CTest4");
+      expect(addresses.muxPolicy).toBe("CTest5");
     });
 
     it("throws if validation fails", () => {
@@ -153,7 +188,9 @@ describe("Contract Address Configuration", () => {
       Object.values(DEFAULT_ADDRESSES).forEach((networkAddresses) => {
         expect(networkAddresses).toHaveProperty("muxAccount");
         expect(networkAddresses).toHaveProperty("muxBatcher");
+        expect(networkAddresses).toHaveProperty("muxDelegation");
         expect(networkAddresses).toHaveProperty("muxPermissions");
+        expect(networkAddresses).toHaveProperty("muxWalletRegistry");
       });
     });
   });

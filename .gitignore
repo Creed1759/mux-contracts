@@ -1,33 +1,77 @@
-# Rust
+# ── Rust build artifacts ──────────────────────────────────────────────────────
 /target/
+**/target/
 **/*.rs.bk
-Cargo.lock
 *.pdb
 
-# WASM
+# ── Coverage artifacts (scripts/coverage.sh) ──────────────────────────────────
+coverage/
+lcov.info
+tarpaulin-report.html
+*.profraw
+*.profdata
+
+# ── WASM compiled output ──────────────────────────────────────────────────────
+# Only built artefacts; source *.wat files are tracked.
 *.wasm
 
-# Node / TypeScript
+# ── Soroban / contract test snapshots ─────────────────────────────────────────
+# Generated automatically by cargo test (soroban-sdk testutils); not needed in VCS.
+**/test_snapshots/
+test_snapshots/
+
+# ── Vitest / Jest snapshots ───────────────────────────────────────────────────
+# Generated automatically by test runners; regenerate locally with --update-snapshots.
+**/__snapshots__/
+*.snap
+
+# ── Vitest cache and temp files ──────────────────────────────────────────────
+.vitest-cache/
+.vitest/
+
+# ── Node / TypeScript ─────────────────────────────────────────────────────────
 node_modules/
 dist/
 *.tsbuildinfo
+.npm/
+.pnp.*
+.yarn/
+
+# ── Bindings build output ─────────────────────────────────────────────────────
+bindings/dist/
+bindings/node_modules/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
 .env.local
 .env.*.local
+.env.localnet
+.env.deploy
+deploy.env
+deployment.env
 
-# IDEs
+# ── Deployer secrets (see docs/deployer-key-requirements.md) ──────────────────
+*.secret
+deployer.json
+
+# ── IDEs / editors ────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+.DS_Store?
+Thumbs.db
 
-# Environment
-.env
-.env.localnet
-
-# Build artifacts
+# ── Native build artifacts ────────────────────────────────────────────────────
 *.o
 *.a
 *.so
 .deps/
+
+# ── Generated / temporary files ──────────────────────────────────────────────
+*.tmp
+*.log
+*.pid

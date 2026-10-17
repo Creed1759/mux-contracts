@@ -1,3 +1,4 @@
+import { xdr } from "@stellar/stellar-sdk";
 import {
   NETWORK_CONFIGS,
   getActiveNetwork,
@@ -19,6 +20,9 @@ type _AssertKeysMatch = Equals<AddressKeys, ContractIdsKeys>;
 // If this line fails to compile, MuxContractIds and DEFAULT_ADDRESSES
 // have diverged — add or remove the mismatched key in both places.
 const _keysMatch: _AssertKeysMatch = true;
+import { MuxSpendingPolicyClient, MuxWalletRegistryClient } from "../src/index";
+import type { BatchOperationKind, Operation } from "../src/types";
+import { muxAccountErrorMessage } from "../src/types";
 
 describe("NETWORK_CONFIGS", () => {
   it("defines localnet config", () => {
@@ -127,5 +131,79 @@ describe("Network selection", () => {
     } else {
       delete process.env.SOROBAN_NETWORK;
     }
+  });
+});
+
+describe("muxAccountErrorMessage", () => {
+  it("resolves variant names to descriptions", () => {
+    expect(muxAccountErrorMessage("DelegateNotFound")).toBe("delegate not found");
+    expect(muxAccountErrorMessage("TooManyDelegates")).toBe("too many delegates");
+    expect(muxAccountErrorMessage("SpendLimitExceeded")).toBe("spend limit exceeded");
+  });
+
+  it("resolves numeric codes to descriptions", () => {
+    expect(muxAccountErrorMessage(4)).toBe("delegate not found");
+    expect(muxAccountErrorMessage(9)).toBe("too many delegates");
+    expect(muxAccountErrorMessage(11)).toBe("arithmetic overflow");
+  });
+
+  it("returns unknown for unmapped codes", () => {
+    expect(muxAccountErrorMessage(99)).toBe("unknown error code");
+  });
+});
+
+describe("BatchOperationKind", () => {
+  const validKinds: BatchOperationKind[] = ["Invoke", "Transfer", "Approve"];
+
+  it("has exactly three variants", () => {
+    expect(validKinds).toHaveLength(3);
+  });
+
+  it("all variants are distinct strings", () => {
+    const unique = new Set(validKinds);
+    expect(unique.size).toBe(3);
+  });
+
+  it("Operation accepts each kind variant", () => {
+    const { Address } = require("@stellar/stellar-sdk");
+    const addr = Address.fromString(
+      "GATPLJWD4WKPGXT5FVVHO6RXYIBUE6RUHBOBGLAWVE4WDMTBX23EL54Q"
+    );
+    validKinds.forEach((kind) => {
+      const op: Operation = {
+        target: addr,
+        fnName: "transfer",
+        args: [] as xdr.ScVal[],
+        requireSuccess: true,
+        kind,
+      };
+      expect(op.kind).toBe(kind);
+    });
+  });
+});
+
+describe("MuxSpendingPolicyClient export", () => {
+  it("is exported from the package index", () => {
+    expect(typeof MuxSpendingPolicyClient).toBe("function");
+  });
+
+  it("exposes checkSpend method", () => {
+    expect(typeof MuxSpendingPolicyClient.prototype.checkSpend).toBe("function");
+  });
+
+  it("exposes setPolicy and getPolicy methods", () => {
+    expect(typeof MuxSpendingPolicyClient.prototype.setPolicy).toBe("function");
+    expect(typeof MuxSpendingPolicyClient.prototype.getPolicy).toBe("function");
+  });
+});
+
+describe("MuxWalletRegistryClient export", () => {
+  it("is exported from the package index", () => {
+    expect(typeof MuxWalletRegistryClient).toBe("function");
+  });
+
+  it("exposes registerWallet and getWallet methods", () => {
+    expect(typeof MuxWalletRegistryClient.prototype.registerWallet).toBe("function");
+    expect(typeof MuxWalletRegistryClient.prototype.getWallet).toBe("function");
   });
 });

@@ -1,44 +1,34 @@
-name: TypeScript Bindings CI
+name: Publish TypeScript Bindings
 
 on:
   push:
     branches: [main]
     paths:
-      - "contracts/**"
-      - "bindings/**"
-      - "scripts/generate-bindings.sh"
-      - ".github/workflows/bindings.yml"
+      - 'bindings/**'
+      - 'contracts/**'
+      - '.github/workflows/bindings.yml'
   pull_request:
     branches: [main]
     paths:
-      - "contracts/**"
-      - "bindings/**"
-      - "scripts/generate-bindings.sh"
-      - ".github/workflows/bindings.yml"
+      - 'bindings/**'
+      - 'contracts/**'
+      - '.github/workflows/bindings.yml'
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-
 jobs:
-  # ── 1. Build contracts ───────────────────────────────────────────────────────
-  build-contracts:
-    name: Build Soroban Contracts
+  generate-bindings:
+    name: Generate bindings from WASM
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.81.0
         with:
           targets: wasm32-unknown-unknown
-
-      - name: Cache Cargo registry
+      - name: Cache Cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -48,180 +38,84 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-
-      - name: Build WASM targets
-        run: |
-          cargo build \
-            --target wasm32-unknown-unknown \
-            --release \
-            --workspace
-
-      - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: contract-wasms
-          path: target/wasm32-unknown-unknown/release/*.wasm
-          retention-days: 7
-
-  # ── 2. Run Rust unit tests ───────────────────────────────────────────────────
-  test-contracts:
-    name: Rust Contract Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Run tests
-        run: cargo test --workspace --all-features
-
-  # ── 3. Generate TypeScript bindings ─────────────────────────────────────────
-  generate-bindings:
-    name: Generate TypeScript Bindings
-    runs-on: ubuntu-latest
-    needs: build-contracts
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Stellar CLI
-        run: |
-          curl -fsSL https://github.com/stellar/stellar-cli/releases/download/v21.4.0/stellar-cli-21.4.0-x86_64-unknown-linux-gnu.tar.gz \
-            | tar -xz -C /usr/local/bin stellar
-          stellar --version
-
-      - name: Download WASM artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: contract-wasms
-          path: target/wasm32-unknown-unknown/release/
-
+      - name: Build WASM (release)
+        run: bash scripts/build-wasm.sh --release
       - name: Generate TypeScript bindings
-        # --skip-build: WASMs were built in the build-contracts job; no need to recompile.
-        run: bash scripts/generate-bindings.sh --network testnet --skip-build
+        run: bash scripts/generate-bindings.sh
+      - name: Check for binding drift
+        run: |
+          git diff --exit-code bindings/src/generated/ || {
+            echo "Generated bindings differ from committed state. Run scripts/generate-bindings.sh locally and commit the changes."
+            exit 1
+          }
 
-      - name: Upload generated bindings
-        uses: actions/upload-artifact@v4
-        with:
-          name: typescript-bindings
-          path: bindings/src/generated/
-          retention-days: 7
-
-  # ── 4. Build & test TypeScript bindings ─────────────────────────────────────
-  test-bindings:
-    name: TypeScript Bindings Build & Test
+  lint-and-test:
+    name: Lint and test bindings
     runs-on: ubuntu-latest
-    needs: generate-bindings
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: bindings/package-lock.json
-
-      - name: Download generated bindings
-        uses: actions/download-artifact@v4
-        with:
-          name: typescript-bindings
-          path: bindings/src/generated/
-
       - name: Install dependencies
         working-directory: bindings
         run: npm ci
-
       - name: Lint
         working-directory: bindings
         run: npm run lint
-
       - name: TypeScript compile check
         working-directory: bindings
-        run: npx tsc --noEmit
-
+        run: npm run typecheck
       - name: Run tests
         working-directory: bindings
-        run: npm test
-
+        run: npx vitest run __tests__/horizon.test.ts --reporter=verbose
       - name: Build distribution
         working-directory: bindings
         run: npm run build
-
-      - name: Upload built package
-        uses: actions/upload-artifact@v4
-        with:
-          name: bindings-dist
-          path: bindings/dist/
-          retention-days: 7
-
-  # ── 5. Check for uncommitted binding drift (main branch only) ───────────────
-  check-binding-drift:
-    name: Check Binding Drift
-    runs-on: ubuntu-latest
-    needs: generate-bindings
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download generated bindings
-        uses: actions/download-artifact@v4
-        with:
-          name: typescript-bindings
-          path: bindings/src/generated/
-
-      - name: Fail if bindings differ from committed state
+      - name: Verify public package metadata
+        working-directory: bindings
         run: |
-          if ! git diff --exit-code bindings/src/generated/; then
-            echo "::error::Generated TypeScript bindings are out of date."
-            echo "Run 'npm run generate' in the bindings/ directory and commit the result."
-            exit 1
-          fi
+          test "$(node -p "require('./package.json').name")" = "@mux-protocol/contracts"
+          npm pack --dry-run
 
-  # ── 6. Publish to npm (main branch only, version bump) ──────────────────────
-  publish:
-    name: Publish to npm
+  test-vectors:
+    name: Committed test vectors (required)
     runs-on: ubuntu-latest
-    needs: [test-bindings]
-    if: |
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      startsWith(github.event.head_commit.message, 'chore: release')
-    permissions:
-      contents: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://registry.npmjs.org"
           cache: "npm"
           cache-dependency-path: bindings/package-lock.json
-
-      - name: Download built package
-        uses: actions/download-artifact@v4
-        with:
-          name: bindings-dist
-          path: bindings/dist/
-
       - name: Install dependencies
         working-directory: bindings
         run: npm ci
-
-      - name: Publish
+      - name: Verify committed test vectors against generated bindings/ABI
         working-directory: bindings
-        run: npm publish --provenance --access public
+        run: npx vitest run __tests__/test-vectors.test.ts --reporter=verbose
+
+  publish:
+    name: Publish to npm
+    needs: [generate-bindings, lint-and-test, test-vectors]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Install dependencies
+        working-directory: bindings
+        run: npm ci
+      - name: Publish to npm with provenance
+        working-directory: bindings
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

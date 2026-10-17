@@ -1,7 +1,8 @@
 [package]
 name = "mux-registry"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
 publish = false
 
 [lib]
@@ -13,5 +14,7 @@ soroban-sdk = { workspace = true }
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 
+[lints]
+workspace = true
 [features]
 testutils = ["soroban-sdk/testutils"]

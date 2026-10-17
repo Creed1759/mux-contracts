@@ -8,7 +8,6 @@
 import {
   Address,
   Contract,
-  ContractSpec,
   Keypair,
   nativeToScVal,
   scValToNative,
@@ -18,12 +17,38 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import type { DelegateInfo, MuxAccountError, SpendLimit } from "../types";
+import { pollTransaction } from "../horizon";
 
 export interface MuxAccountClientOptions {
   contractId: string;
   networkPassphrase: string;
   rpcUrl: string;
 }
+
+/**
+ * Authorization requirement for a mutating entrypoint.
+ *
+ * - `owner`    — only the account owner may invoke.
+ * - `delegate` — owner or an active, non-expired delegate with spend rights.
+ * - `guardian` — owner or a configured guardian (recovery paths).
+ * - `public`   — intentionally unauthenticated (e.g. one-time init).
+ *
+ * Deny-by-default: any mutating entrypoint not listed in
+ * `MUX_ACCOUNT_MUTATING_AUTHZ` is treated as unguarded and must fail the
+ * access-control checklist test.
+ */
+export type MutatingAuthz = "owner" | "delegate" | "guardian" | "public";
+
+/**
+ * Authorization map for every mutating entrypoint on `mux-account`.
+ * Keep in sync with `docs/access-control-checklist.md`.
+ */
+export const MUX_ACCOUNT_MUTATING_AUTHZ: Readonly<Record<string, MutatingAuthz>> = {
+  initialize: "public",
+  set_delegate: "owner",
+  remove_delegate: "owner",
+  set_spend_limit: "owner",
+};
 
 export class MuxAccountClient {
   private contract: Contract;
@@ -58,12 +83,12 @@ export class MuxAccountClient {
   async setDelegate(
     sourceKeypair: Keypair,
     delegate: Address,
-    expiryLedger: number,
+    expiresAt: bigint,
     canSpend: boolean
   ): Promise<void> {
     const tx = await this.buildTx(sourceKeypair, "set_delegate", [
       nativeToScVal(delegate.toString(), { type: "address" }),
-      nativeToScVal(expiryLedger, { type: "u32" }),
+      nativeToScVal(expiresAt, { type: "u64" }),
       nativeToScVal(canSpend, { type: "bool" }),
     ]);
     await this.submit(tx, sourceKeypair);
@@ -134,5 +159,6 @@ export class MuxAccountClient {
     if (sendResult.status === "ERROR") {
       throw new Error(`Transaction failed: ${JSON.stringify(sendResult.errorResult)}`);
     }
+    await pollTransaction(this.server, sendResult.hash);
   }
 }

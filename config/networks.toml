@@ -1,0 +1,69 @@
+# config/networks.toml
+#
+# Network configuration for Mux Protocol Soroban deployments.
+#
+# Each section defines a Stellar network environment.
+# Use the `network` key when invoking deploy and verification scripts.
+#
+# Usage in shell scripts:
+#   source scripts/network-config.sh
+#   load_network_config testnet
+#   echo $NETWORK_PASSPHRASE
+#
+# ── Why the network passphrase matters ────────────────────────────────────────
+#
+# Every Stellar transaction is signed over a payload that includes the network
+# passphrase hashed via SHA-256.  This ties the signature cryptographically to
+# one specific network and prevents replay attacks across networks.
+#
+# If you sign a transaction with the wrong passphrase the signature will be
+# invalid and the transaction will be rejected by the network validators.
+# More critically, submitting a mainnet-signed transaction to testnet (or vice
+# versa) is always safe — it will simply be rejected — but the converse concern
+# is real: a transaction crafted for testnet cannot be replayed on mainnet
+# because the passphrase hash will not match.
+#
+# When calling deploy scripts, the passphrase is normally set automatically by
+# sourcing this file through scripts/network-config.sh.  You can also override
+# it explicitly:
+#
+#   export STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+#
+# Do NOT hard-code the passphrase string inside contract logic — pass it at
+# deploy/invoke time via the CLI --network-passphrase flag or the env var above.
+
+# ── Testnet ────────────────────────────────────────────────────────────────────
+[testnet]
+# Standard Stellar testnet
+passphrase          = "Test SDF Network ; September 2015"
+rpc_url             = "https://soroban-testnet.stellar.org"
+horizon_url         = "https://horizon-testnet.stellar.org"
+friendbot_url       = "https://friendbot.stellar.org"
+native_asset_issuer = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
+
+# ── Mainnet (Public) ───────────────────────────────────────────────────────────
+[mainnet]
+# Production Stellar public network — use with extreme care
+passphrase          = "Public Global Stellar Network ; September 2015"
+rpc_url             = "https://rpc-mainnet.stellar.org"
+horizon_url         = "https://horizon.stellar.org"
+friendbot_url       = ""
+native_asset_issuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+
+# ── Futurenet ──────────────────────────────────────────────────────────────────
+[futurenet]
+# Stellar Futurenet — cutting-edge protocol features (unstable)
+passphrase          = "Test SDF Future Network ; October 2022"
+rpc_url             = "https://rpc-futurenet.stellar.org"
+horizon_url         = "https://horizon-futurenet.stellar.org"
+friendbot_url       = "https://friendbot-futurenet.stellar.org/friendbot"
+native_asset_issuer = "GDXJHJHWN6GRNOQELSITZIQNWUQsota64UAAM5TFAM3PUNYB5OQAJUN3"
+
+# ── Local (standalone) ─────────────────────────────────────────────────────────
+[local]
+# Local Stellar Quickstart node: docker run stellar/quickstart --standalone
+passphrase          = "Standalone Network ; February 2017"
+rpc_url             = "http://localhost:8000/soroban/rpc"
+horizon_url         = "http://localhost:8000"
+friendbot_url       = "http://localhost:8000/friendbot"
+native_asset_issuer = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"

@@ -43,8 +43,11 @@ done
 
 CONTRACTS=(
   "mux-account"
+  "mux-account-factory"
   "mux-batcher"
   "mux-permissions"
+  "mux-policy"
+  "mux-registry"
 )
 
 if [[ "${SKIP_BUILD}" == "false" ]]; then
@@ -67,8 +70,9 @@ for contract in "${CONTRACTS[@]}"; do
   out_dir="${BINDINGS_DIR}/${contract}"
 
   if [[ ! -f "${wasm_path}" ]]; then
-    echo "  [WARN] WASM not found for ${contract} at ${wasm_path}, skipping."
-    continue
+    echo "  [ERROR] WASM not found for ${contract} at ${wasm_path}." >&2
+    echo "  Build the contracts first with: cargo build --target wasm32-unknown-unknown --release --workspace" >&2
+    exit 1
   fi
 
   echo "  Generating bindings for ${contract}..."

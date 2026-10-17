@@ -27,8 +27,28 @@ describe("Error Mapping", () => {
       expect(ERROR_HTTP_MAP.AlreadyInitialized).toBe(409);
     });
 
+    it("maps security guard errors to 409", () => {
+      expect(ERROR_HTTP_MAP.ReentrancyDetected).toBe(409);
+    });
+
+    it("maps TooManyDelegates to 409", () => {
+      expect(ERROR_HTTP_MAP.TooManyDelegates).toBe(409);
+    });
+
+    it("maps MetadataNotFound to 404", () => {
+      expect(ERROR_HTTP_MAP.MetadataNotFound).toBe(404);
+    });
+
+    it("maps arithmetic overflow to 500", () => {
+      expect(ERROR_HTTP_MAP.ArithmeticOverflow).toBe(500);
+    });
+
     it("maps initialization errors to 500", () => {
       expect(ERROR_HTTP_MAP.NotInitialized).toBe(500);
+    });
+
+    it("maps WalletNotFound to 404", () => {
+      expect(ERROR_HTTP_MAP.WalletNotFound).toBe(404);
     });
   });
 
@@ -67,6 +87,9 @@ describe("Error Mapping", () => {
         "SpendLimitExceeded",
         "InvalidAmount",
         "InvalidPeriod",
+        "TooManyDelegates",
+        "ReentrancyDetected",
+        "ArithmeticOverflow",
       ];
 
       accountErrors.forEach((error) => {
@@ -82,6 +105,7 @@ describe("Error Mapping", () => {
         "BatchTooLarge",
         "RequiredOperationFailed",
         "Unauthorized",
+        "ReentrancyDetected",
       ];
 
       batcherErrors.forEach((error) => {
@@ -102,6 +126,52 @@ describe("Error Mapping", () => {
       ];
 
       permissionErrors.forEach((error) => {
+        const response = contractErrorToHttp(error);
+        expect(response.statusCode).toBeGreaterThanOrEqual(400);
+        expect(response.statusCode).toBeLessThan(600);
+      });
+    });
+
+    it("handles all MuxAccountFactoryError variants", () => {
+      const factoryErrors: string[] = [
+        "Unauthorized",
+        "InvalidAccount",
+        "TooManyAccounts",
+        "MetadataNotFound",
+      ];
+
+      factoryErrors.forEach((error) => {
+        const response = contractErrorToHttp(error);
+        expect(response.statusCode).toBeGreaterThanOrEqual(400);
+        expect(response.statusCode).toBeLessThan(600);
+      });
+    });
+
+    it("handles all MuxRegistryError variants", () => {
+      const registryErrors: string[] = [
+        "NotInitialized",
+        "AlreadyInitialized",
+        "Unauthorized",
+        "ContractNotFound",
+        "TooManyContracts",
+      ];
+
+      registryErrors.forEach((error) => {
+        const response = contractErrorToHttp(error);
+        expect(response.statusCode).toBeGreaterThanOrEqual(400);
+        expect(response.statusCode).toBeLessThan(600);
+      });
+    });
+
+    it("handles all MuxWalletRegistryError variants", () => {
+      const walletRegistryErrors: string[] = [
+        "NotInitialized",
+        "AlreadyInitialized",
+        "Unauthorized",
+        "WalletNotFound",
+      ];
+
+      walletRegistryErrors.forEach((error) => {
         const response = contractErrorToHttp(error);
         expect(response.statusCode).toBeGreaterThanOrEqual(400);
         expect(response.statusCode).toBeLessThan(600);
