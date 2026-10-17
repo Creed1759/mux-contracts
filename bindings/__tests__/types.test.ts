@@ -3,6 +3,22 @@ import {
   getActiveNetwork,
   getNetworkConfig,
 } from "../src/network";
+import type { MuxContractIds } from "../src/types";
+import { DEFAULT_ADDRESSES } from "../src/addresses-config";
+
+// Type-level assertion: MuxContractIds and DEFAULT_ADDRESSES values
+// must share exactly the same set of keys so the two public types
+// cannot drift.
+type Equals<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2)
+    ? true
+    : false;
+type AddressKeys = keyof (typeof DEFAULT_ADDRESSES)["localnet"];
+type ContractIdsKeys = keyof MuxContractIds;
+type _AssertKeysMatch = Equals<AddressKeys, ContractIdsKeys>;
+// If this line fails to compile, MuxContractIds and DEFAULT_ADDRESSES
+// have diverged — add or remove the mismatched key in both places.
+const _keysMatch: _AssertKeysMatch = true;
 
 describe("NETWORK_CONFIGS", () => {
   it("defines localnet config", () => {
@@ -43,6 +59,17 @@ describe("NETWORK_CONFIGS", () => {
     Object.values(NETWORK_CONFIGS).forEach((config) => {
       expect(config.networkPassphrase).toBeTruthy();
     });
+  });
+
+  it("MuxContractIds keys match DEFAULT_ADDRESSES keys", () => {
+    const defaultKeys = Object.keys(DEFAULT_ADDRESSES.localnet).sort();
+    const contractIdKeys: Array<keyof MuxContractIds> = [
+      "muxAccount",
+      "muxBatcher",
+      "muxPermissions",
+    ];
+    const sortedKeys = [...contractIdKeys].sort();
+    expect(defaultKeys).toEqual(sortedKeys);
   });
 });
 
